@@ -1,0 +1,62 @@
+{
+    "application": {
+        "single_instance_guid": "marina-hotel-management-system",
+        "dpi_aware": true
+    },
+    "debugging": {
+        "show_console": false,
+        "subprocess_show_console": false,
+        "log_level": "INFO",
+        "log_file": "debug.log"
+    },
+    "main_window": {
+        "title": "نظام إدارة فندق مارينا بلازا - Marina Plaza Hotel Management System",
+        "icon": "",
+        "default_size": [1200, 800],
+        "minimum_size": [800, 600],
+        "maximum_size": [0, 0],
+        "disable_maximize_button": false,
+        "center_on_screen": true,
+        "start_maximized": true,
+        "start_fullscreen": false,
+        "always_on_top": false,
+        "minimize_to_tray": true,
+        "minimize_to_tray_message": "نظام إدارة الفندق مصغر في الخلفية"
+    },
+    "popup_window": {
+        "icon": "",
+        "fixed_title": "نظام إدارة فندق مارينا بلازا",
+        "center_relative_to_parent": true,
+        "default_size": [900, 700]
+    },
+    "web_server": {
+        "listen_on": ["127.0.0.1", 0],
+        "www_directory": "www",
+        "index_files": ["index.php", "login.php"],
+        "cgi_interpreter": "php/php-cgi.exe",
+        "cgi_extensions": ["php"],
+        "cgi_temp_dir": "",
+        "404_handler": "/login.php",
+        "hide_files": ["*.md", "*.txt", "*README*", "test_*", "*test*", "*.code-workspace", "*.config.*"]
+    },
+    "chrome": {
+        "log_file": "debug.log",
+        "log_severity": "default",
+        "cache_path": "webcache",
+        "external_drag": false,
+        "external_navigation": false,
+        "reload_page_F5": true,
+        "devtools_F12": false,
+        "remote_debugging_port": 0,
+        "command_line_switches": {},
+        "enable_downloads": true,
+        "context_menu": {
+            "enable_menu": true,
+            "navigation": false,
+            "print": true,
+            "view_source": false,
+            "open_in_external_browser": false,
+            "devtools": false
+        }
+    }
+}
