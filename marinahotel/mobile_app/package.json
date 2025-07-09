@@ -1,0 +1,75 @@
+{
+  "name": "marina-hotel-app",
+  "displayName": "فندق مارينا",
+  "version": "1.0.0",
+  "description": "تطبيق إدارة فندق مارينا - نظام شامل لإدارة الحجوزات والمدفوعات والتقارير",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "serve": "cordova serve",
+    "build": "cordova build",
+    "build:android": "cordova build android",
+    "build:android:release": "cordova build android --release",
+    "run:android": "cordova run android",
+    "run:android:device": "cordova run android --device",
+    "emulate:android": "cordova emulate android",
+    "clean": "cordova clean",
+    "prepare": "cordova prepare",
+    "platform:add:android": "cordova platform add android",
+    "platform:remove:android": "cordova platform remove android",
+    "plugin:list": "cordova plugin list",
+    "requirements": "cordova requirements",
+    "info": "cordova info"
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "hotel",
+    "management",
+    "arabic",
+    "booking",
+    "payments",
+    "reports"
+  ],
+  "author": {
+    "name": "فريق تطوير فندق مارينا",
+    "email": "info@marinahotel.com",
+    "url": "http://marinahotel.com"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "cordova": "^12.0.0",
+    "cordova-android": "^12.0.0"
+  },
+  "cordova": {
+    "platforms": [
+      "android"
+    ],
+    "plugins": {
+      "cordova-plugin-whitelist": {},
+      "cordova-plugin-statusbar": {},
+      "cordova-plugin-device": {},
+      "cordova-plugin-splashscreen": {},
+      "cordova-plugin-network-information": {},
+      "cordova-plugin-file": {},
+      "cordova-plugin-file-transfer": {},
+      "cordova-plugin-inappbrowser": {},
+      "cordova-plugin-camera": {},
+      "cordova-plugin-vibration": {},
+      "cordova-plugin-dialogs": {},
+      "cordova-plugin-toast": {}
+    }
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marinahotel/mobile-app.git"
+  },
+  "bugs": {
+    "url": "https://github.com/marinahotel/mobile-app/issues"
+  },
+  "homepage": "https://github.com/marinahotel/mobile-app#readme"
+}
