@@ -1,16 +1,7 @@
 <?php
-// تفعيل عرض الأخطاء
-
 // تضمين ملفات النظام
 require_once __DIR__ . '/../../includes/db.php';
 require_once __DIR__ . '/../../includes/auth.php';
-
-// الجلسة تبدأ تلقائياً عبر auth.php
-
-// إنشاء توكن الحماية
-if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
 
 // تأمين معالجة البيانات
 function sanitize_input($data) {
@@ -54,11 +45,6 @@ $stmt->close();
 
 // معالجة نموذج الحجز
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    // التحقق من CSRF token
-    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        die("طلب غير صالح");
-    }
-
     $required_fields = [
         'guest_name' => 'اسم النزيل',
         'guest_id_type' => 'نوع الهوية',
@@ -217,10 +203,14 @@ $rooms_result = $stmt->get_result();
         body {
             background-color: #f8f9fa;
             font-family: 'Tajawal', sans-serif;
+            font-weight: 600;
         }
         .card {
             border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .form-label {
+            font-weight: 600;
         }
         .form-label.required:after {
             content: " *";
@@ -229,6 +219,20 @@ $rooms_result = $stmt->get_result();
         .btn-submit {
             background-color: #28a745;
             border-color: #28a745;
+            font-weight: 600;
+        }
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .card-header h4 {
+            font-weight: 700;
+        }
+        .form-control, .form-select {
+            font-weight: 500;
+        }
+        .alert {
+            font-weight: 600;
         }
         @media (max-width: 768px) {
             .container {
@@ -269,7 +273,6 @@ $rooms_result = $stmt->get_result();
             </div>
             <div class="card-body">
                 <form method="post">
-                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                     <input type="hidden" name="room_number" value="<?php echo $roomNumber; ?>">
 
                     <div class="row g-3 mb-4">
@@ -395,45 +398,3 @@ $rooms_result = $stmt->get_result();
 <?php
 $conn->close();
 ?>
-
-   <style>
-        body {
-            background-color: #f8f9fa;
-            font-family: 'Tajawal', sans-serif;
-            font-weight: 600; /* زيادة سماكة الخط العام */
-        }
-        .card {
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .form-label {
-            font-weight: 600; /* زيادة سماكة تسميات الحقول */
-        }
-        .form-label.required:after {
-            content: " *";
-            color: red;
-        }
-        .btn-submit {
-            background-color: #28a745;
-            border-color: #28a745;
-            font-weight: 600; /* زيادة سماكة نص الأزرار */
-        }
-        .page-title {
-            font-size: 1.5rem;
-            font-weight: 700; /* زيادة سماكة العنوان الرئيسي */
-        }
-        .card-header h4 {
-            font-weight: 700; /* زيادة سماكة عنوان البطاقة */
-        }
-        .form-control, .form-select {
-            font-weight: 500; /* سماكة متوسطة لنص الحقول */
-        }
-        .alert {
-            font-weight: 600; /* زيادة سماكة نص التنبيهات */
-        }
-        @media (max-width: 768px) {
-            .container {
-                padding: 15px;
-            }
-        }
-    </style>

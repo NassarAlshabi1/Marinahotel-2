@@ -7,11 +7,10 @@
 require_once '../../includes/config.php';
 require_once '../../includes/db.php';
 require_once '../../includes/auth.php';
-require_once '../../includes/security.php';
 
 // التحقق من صلاحيات المدير
 if (!isset($_SESSION['user_type']) || $_SESSION['user_type'] !== 'admin') {
-    header("Location: ../../login.php?error=ليس لديك صلاحية للوصول إلى هذه الصفحة");
+    header("Location: ../../login.php?error=" . urlencode("ليس لديك صلاحية للوصول إلى هذه الصفحة"));
     exit();
 }
 
@@ -349,37 +348,31 @@ class BackupManager {
 
 // معالجة الطلبات
 $backup_manager = new BackupManager($conn);
-$security = new SecurityManager($conn);
 
 $message = '';
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // التحقق من رمز CSRF
-    if (!$security->validateCSRFToken($_POST['csrf_token'] ?? '')) {
-        $error = 'رمز الأمان غير صحيح';
-    } else {
-        $action = $_POST['action'] ?? '';
-        
-        switch ($action) {
-            case 'create_backup':
-                $result = $backup_manager->createFullBackup();
-                if ($result['success']) {
-                    $message = $result['message'] . ' (الحجم: ' . $result['size'] . ')';
-                } else {
-                    $error = $result['message'];
-                }
-                break;
-                
-            case 'delete_backup':
-                $filename = $_POST['filename'] ?? '';
-                if ($backup_manager->deleteBackup($filename)) {
-                    $message = 'تم حذف النسخة الاحتياطية بنجاح';
-                } else {
-                    $error = 'فشل في حذف النسخة الاحتياطية';
-                }
-                break;
-        }
+    $action = $_POST['action'] ?? '';
+    
+    switch ($action) {
+        case 'create_backup':
+            $result = $backup_manager->createFullBackup();
+            if ($result['success']) {
+                $message = $result['message'] . ' (الحجم: ' . $result['size'] . ')';
+            } else {
+                $error = $result['message'];
+            }
+            break;
+            
+        case 'delete_backup':
+            $filename = $_POST['filename'] ?? '';
+            if ($backup_manager->deleteBackup($filename)) {
+                $message = 'تم حذف النسخة الاحتياطية بنجاح';
+            } else {
+                $error = 'فشل في حذف النسخة الاحتياطية';
+            }
+            break;
     }
 }
 
@@ -398,13 +391,10 @@ $backups = $backup_manager->getBackupsList();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>إدارة النسخ الاحتياطي - <?php echo SYSTEM_NAME; ?></title>
-    <!-- الخطوط والأيقونات المحلية -->
     <link href="<?= BASE_URL ?>assets/fonts/fonts.css" rel="stylesheet">
     <link href="<?= BASE_URL ?>assets/css/bootstrap-local.css" rel="stylesheet">
     <link href="<?= BASE_URL ?>assets/css/arabic-enhanced.css" rel="stylesheet">
-
-    <!-- Fallback للخطوط الخارجية -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
     <div class="container">
@@ -433,7 +423,6 @@ $backups = $backup_manager->getBackupsList();
                     </div>
                     <div class="card-body">
                         <form method="POST">
-                            <?php echo csrf_field(); ?>
                             <input type="hidden" name="action" value="create_backup">
                             
                             <p>سيتم إنشاء نسخة احتياطية كاملة تشمل:</p>
@@ -484,7 +473,6 @@ $backups = $backup_manager->getBackupsList();
                                                     
                                                     <form method="POST" style="display: inline;" 
                                                           onsubmit="return confirm('هل أنت متأكد من حذف هذه النسخة الاحتياطية؟')">
-                                                        <?php echo csrf_field(); ?>
                                                         <input type="hidden" name="action" value="delete_backup">
                                                         <input type="hidden" name="filename" value="<?php echo htmlspecialchars($backup['filename']); ?>">
                                                         <button type="submit" class="btn btn-sm btn-danger">
@@ -500,12 +488,6 @@ $backups = $backup_manager->getBackupsList();
                         <?php endif; ?>
                     </div>
                 </div>
-            </div>
-            
-            <div class="card-footer">
-                <a href="../dash.php" class="btn btn-secondary">
-                    <i class="fas fa-arrow-right"></i> العودة للوحة التحكم
-                </a>
             </div>
         </div>
     </div>
