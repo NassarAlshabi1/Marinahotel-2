@@ -1,14 +1,37 @@
 <?php
-require_once 'auth.php';
+// بدء الجلسة وتحميل المكونات الأساسية
+session_start();
+require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/config.php';
-// تحديد المنطقة الزمنية لعدن (اليمن)
+require_once __DIR__ . '/security.php';
+
+// تحديد المنطقة الزمنية
 date_default_timezone_set('Asia/Aden');
 
-// تحديد المسار النسبي للأصول حسب موقع الملف بدقة
+// إنشاء CSRF token إذا لم يكن موجوداً
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+// تحديد الصفحة الحالية للرابط النشط
+$current_page = basename($_SERVER['PHP_SELF']);
+$current_path = $_SERVER['REQUEST_URI'];
+
+// دالة لإنشاء CSRF token
+function csrf_token() {
+    return $_SESSION['csrf_token'];
+}
+
+// دالة للتحقق من الرابط النشط
+function is_active($page_name) {
+    global $current_page, $current_path;
+    return (strpos($current_path, $page_name) !== false || $current_page === $page_name) ? 'active' : '';
+}
+
+// تحديد المسار النسبي للأصول حسب موقع الملف
 $current_script = $_SERVER['SCRIPT_NAME'];
 $base_admin_path = '/marinahotel/admin/';
 
-// حساب العمق من مجلد admin
 if (strpos($current_script, $base_admin_path) !== false) {
     $path_after_admin = substr($current_script, strpos($current_script, $base_admin_path) + strlen($base_admin_path));
     $depth = substr_count($path_after_admin, '/');
@@ -16,161 +39,229 @@ if (strpos($current_script, $base_admin_path) !== false) {
     $depth = 0;
 }
 
-// تحديد المسار الصحيح للأصول
 $assets_path = str_repeat('../', $depth);
-if ($depth === 0) {
-    $base_path = '';
-} else {
-    $base_path = str_repeat('../', $depth);
-}
+$base_path = ($depth === 0) ? '' : str_repeat('../', $depth);
 ?>
 
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="نظام إدارة فندق مارينا - نظام متكامل لإدارة الحجوزات والضيوف">
+    <meta name="author" content="فريق التطوير المحلي">
     <title>نظام إدارة فندق مارينا</title>
 
-    <!-- Bootstrap CSS (Local) -->
+    <!-- Bootstrap CSS (محلي) -->
     <link href="<?= BASE_URL ?>assets/css/bootstrap-complete.css" rel="stylesheet">
-    <!-- Local Fonts -->
+    <!-- الخطوط المحلية -->
     <link href="<?= BASE_URL ?>assets/fonts/fonts.css" rel="stylesheet">
-    <!-- Font Awesome (Local) -->
+    <!-- Font Awesome (محلي) -->
     <link href="<?= BASE_URL ?>assets/css/fontawesome.min.css" rel="stylesheet">
-    <!-- Dashboard CSS -->
+    <!-- تصميم لوحة التحكم -->
     <link href="<?= BASE_URL ?>assets/css/dashboard.css" rel="stylesheet">
-    <!-- Arabic Support CSS -->
+    <!-- دعم اللغة العربية -->
     <link href="<?= BASE_URL ?>assets/css/arabic-support.css" rel="stylesheet">
+    <!-- ثيم مارينا المحسن -->
+    <link href="<?= BASE_URL ?>assets/css/marina-theme.css" rel="stylesheet">
 
     <style>
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+            --border-radius: 12px;
+            --box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            --transition: all 0.3s ease;
+        }
+
         body {
-            font-family: 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Tajawal', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             margin: 0;
             padding-top: 80px;
             direction: rtl;
             text-align: right;
             min-height: 100vh;
+            position: relative;
         }
 
-        /* تنسيق عام للعناصر */
+        /* إعدادات عامة */
         * {
-            font-family: 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: 'Tajawal', 'Segoe UI', sans-serif;
         }
 
-        /* تنسيق النافبار */
+        /* تصميم شريط التنقل */
         .navbar {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%) !important;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
             padding: 1rem 0;
             z-index: 1050;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            transition: var(--transition);
+        }
+
+        .navbar.scrolled {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%) !important;
+            backdrop-filter: blur(10px);
         }
 
         .navbar-brand {
             font-weight: 700;
-            font-size: 1.4rem;
+            font-size: 1.5rem;
             color: white !important;
             text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            transition: var(--transition);
         }
 
         .navbar-brand:hover {
-            color: #ffc107 !important;
+            color: var(--warning-color) !important;
+            transform: scale(1.05);
         }
 
+        .navbar-brand i {
+            margin-left: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        /* روابط التنقل */
         .navbar-nav .nav-link {
             font-weight: 500;
             font-size: 1rem;
-            padding: 0.7rem 1.2rem;
-            transition: all 0.3s ease;
+            padding: 0.8rem 1.2rem;
+            transition: var(--transition);
             color: rgba(255,255,255,0.9) !important;
-            border-radius: 6px;
-            margin: 0 2px;
+            border-radius: 8px;
+            margin: 0 3px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .navbar-nav .nav-link:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: var(--transition);
+        }
+
+        .navbar-nav .nav-link:hover:before {
+            left: 100%;
         }
 
         .navbar-nav .nav-link:hover,
-        .navbar-nav .nav-link:focus {
-            color: #ffc107 !important;
-            background-color: rgba(255,255,255,0.1);
+        .navbar-nav .nav-link:focus,
+        .navbar-nav .nav-link.active {
+            color: var(--warning-color) !important;
+            background-color: rgba(255,255,255,0.15);
             transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
 
-        .navbar-toggler {
-            border-color: rgba(255, 255, 255, 0.3);
-            padding: 0.5rem 0.75rem;
+        .navbar-nav .nav-link.active {
+            background-color: rgba(255,193,7,0.2);
+            font-weight: 600;
         }
 
-        .navbar-toggler:focus {
-            box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25);
-        }
-
-        /* إصلاح القوائم المنسدلة */
+        /* القوائم المنسدلة */
         .dropdown-menu {
             border: none;
-            border-radius: 12px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-            padding: 10px 0;
+            border-radius: var(--border-radius);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            padding: 12px 0;
             margin-top: 8px;
-            min-width: 300px;
+            min-width: 320px;
             background: white;
             direction: rtl;
             text-align: right;
-            position: absolute;
-            z-index: 1000;
-            display: none;
+            animation: dropdownFadeIn 0.3s ease;
         }
 
-        .dropdown-menu.show {
-            display: block;
-        }
-
-        .dropdown:hover .dropdown-menu {
-            display: block;
+        @keyframes dropdownFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .dropdown-header {
-            color: #667eea !important;
+            color: var(--primary-color) !important;
             font-weight: 700;
             font-size: 0.85rem;
-            padding: 8px 20px 5px;
+            padding: 10px 20px 8px;
             margin-bottom: 5px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-bottom: 1px solid #dee2e6;
         }
 
         .dropdown-item {
-            padding: 10px 20px;
+            padding: 12px 20px;
             font-size: 0.95rem;
             color: #495057;
-            transition: all 0.3s ease;
+            transition: var(--transition);
             border-radius: 0;
             text-align: right;
             direction: rtl;
-            display: block;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dropdown-item:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: -100%;
             width: 100%;
-            clear: both;
-            font-weight: 400;
-            text-decoration: none;
-            white-space: nowrap;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            transition: var(--transition);
+            z-index: -1;
+        }
+
+        .dropdown-item:hover:before {
+            right: 0;
         }
 
         .dropdown-item:hover,
         .dropdown-item:focus {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            transform: translateX(-5px);
+            background: transparent;
+            transform: translateX(-8px);
         }
 
         .dropdown-item i {
             width: 20px;
             text-align: center;
             opacity: 0.7;
-            margin-left: 8px;
+            margin-left: 10px;
+            transition: var(--transition);
         }
 
-        .dropdown-item:hover i,
-        .dropdown-item:focus i {
+        .dropdown-item:hover i {
             opacity: 1;
+            transform: scale(1.1);
         }
 
         .dropdown-divider {
@@ -178,34 +269,92 @@ if ($depth === 0) {
             border-color: #e9ecef;
         }
 
-        .dropdown-toggle::after {
-            margin-left: 5px;
+        /* زر التبديل للجوال */
+        .navbar-toggler {
+            border-color: rgba(255, 255, 255, 0.3);
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
         }
 
-        /* تحسين responsive */
+        .navbar-toggler:focus {
+            box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25);
+        }
+
+        /* شارة الإشعارات */
+        .notification-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--danger-color);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 53%, 80%, 100% { transform: translateY(0); }
+            40%, 43% { transform: translateY(-8px); }
+            70% { transform: translateY(-4px); }
+        }
+
+        /* تصميم متجاوب */
         @media (max-width: 768px) {
             body {
                 padding-top: 70px;
             }
 
             .navbar-brand {
-                font-size: 1.2rem;
+                font-size: 1.3rem;
             }
 
             .navbar-nav .nav-link {
-                padding: 0.5rem 1rem;
+                padding: 0.6rem 1rem;
                 font-size: 0.9rem;
+                margin: 2px 0;
             }
 
             .dropdown-menu {
                 position: static !important;
                 transform: none !important;
-                box-shadow: none;
+                box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
                 border: 1px solid #dee2e6;
                 margin-top: 5px;
                 width: 100%;
                 min-width: auto;
+                animation: none;
             }
+
+            .dropdown-item {
+                padding: 10px 15px;
+            }
+        }
+
+        /* تحسينات إضافية */
+        .container-fluid {
+            padding-left: 15px;
+            padding-right: 15px;
+        }
+
+        /* تأثيرات التحميل */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
         /* تنسيق الجداول */
@@ -213,13 +362,13 @@ if ($depth === 0) {
             direction: rtl;
             text-align: right;
             background: white;
-            border-radius: 10px;
+            border-radius: var(--border-radius);
             overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: var(--box-shadow);
         }
 
         .table th {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
             color: white;
             font-weight: 600;
             border: none;
@@ -238,25 +387,22 @@ if ($depth === 0) {
             text-align: right;
             border-radius: 8px;
             border: 1px solid #ced4da;
-            transition: all 0.3s ease;
+            transition: var(--transition);
         }
 
         .form-control:focus, .form-select:focus {
-            border-color: #667eea;
+            border-color: var(--primary-color);
             box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
-        }
-
-        input[type="number"], input[type="tel"], .number-input {
-            direction: ltr;
-            text-align: left;
         }
 
         /* تنسيق الأزرار */
         .btn {
             border-radius: 8px;
             font-weight: 500;
-            transition: all 0.3s ease;
+            transition: var(--transition);
             border: none;
+            position: relative;
+            overflow: hidden;
         }
 
         .btn:hover {
@@ -265,7 +411,7 @@ if ($depth === 0) {
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
         }
 
         .btn-success {
@@ -280,21 +426,12 @@ if ($depth === 0) {
             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
         }
 
-        /* تنسيق التنبيهات */
-        .alert {
-            font-size: 1rem;
-            font-weight: 500;
-            border-radius: 10px;
-            border: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-
         /* تنسيق البطاقات */
         .card {
             border: none;
             border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
+            box-shadow: var(--box-shadow);
+            transition: var(--transition);
         }
 
         .card:hover {
@@ -303,45 +440,33 @@ if ($depth === 0) {
         }
 
         .card-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
             color: white;
             border-radius: 15px 15px 0 0 !important;
             border: none;
             font-weight: 600;
         }
 
-        /* إشعارات النظام */
+        /* حاوية الإشعارات */
         .notifications-container {
             position: fixed;
             top: 100px;
             left: 20px;
-            z-index: 1050;
+            z-index: 1060;
             max-width: 350px;
         }
 
         .notification-item {
             background: white;
-            border-left: 4px solid #667eea;
+            border-right: 4px solid var(--primary-color);
             padding: 15px;
             margin-bottom: 10px;
             border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            animation: slideIn 0.3s ease;
+            box-shadow: var(--box-shadow);
+            animation: slideInRight 0.3s ease;
         }
 
-        .notification-item.success {
-            border-left-color: #28a745;
-        }
-
-        .notification-item.error {
-            border-left-color: #dc3545;
-        }
-
-        .notification-item.warning {
-            border-left-color: #ffc107;
-        }
-
-        @keyframes slideIn {
+        @keyframes slideInRight {
             from {
                 transform: translateX(-100%);
                 opacity: 0;
@@ -352,31 +477,34 @@ if ($depth === 0) {
             }
         }
 
-        /* إصلاح notification badge */
-        .notification-badge {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background: #dc3545;
-            color: white;
-            border-radius: 50%;
-            width: 18px;
-            height: 18px;
-            font-size: 11px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
+        .notification-item.success {
+            border-right-color: var(--success-color);
+        }
+
+        .notification-item.error {
+            border-right-color: var(--danger-color);
+        }
+
+        .notification-item.warning {
+            border-right-color: var(--warning-color);
+        }
+
+        /* تحسينات الأداء */
+        .nav-link, .dropdown-item, .btn {
+            will-change: transform;
         }
     </style>
 </head>
 <body>
-    <!-- شريط التنقل -->
-    <nav class="navbar navbar-expand-lg fixed-top" aria-label="Main navigation">
-        <div class="container">
+    <!-- شريط التنقل الرئيسي -->
+    <nav class="navbar navbar-expand-lg fixed-top" aria-label="الشريط الرئيسي للتنقل">
+        <div class="container-fluid">
+            <!-- شعار النظام -->
             <a class="navbar-brand" href="<?= $base_path ?>dash.php" title="الصفحة الرئيسية">
-                <i class="fas fa-hotel me-2"></i>فندق مارينا
+                <i class="fas fa-hotel"></i>فندق مارينا
             </a>
+
+            <!-- زر التبديل للجوال -->
             <button
                 class="navbar-toggler"
                 type="button"
@@ -386,28 +514,43 @@ if ($depth === 0) {
                 aria-expanded="false"
                 aria-label="تبديل التنقل"
             >
-                <span class="navbar-toggler-icon"></span>
+                <i class="fas fa-bars text-white"></i>
             </button>
 
+            <!-- عناصر التنقل -->
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
+                    <!-- لوحة التحكم -->
                     <li class="nav-item">
-                        <a class="nav-link" href="<?= $base_path ?>dash.php">
+                        <a class="nav-link <?= is_active('dash.php') ?>" href="<?= $base_path ?>dash.php">
                             <i class="fas fa-tachometer-alt me-1"></i>لوحة التحكم
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="<?= $base_path ?>bookings/list.php">
-                            <i class="fas fa-calendar-alt me-1"></i>الحجوزات
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="<?= $base_path ?>bookings/add2.php">
-                            <i class="fas fa-plus-circle me-1"></i>حجز جديد
-                        </a>
-                    </li>
+
+                    <!-- الحجوزات -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle <?= is_active('bookings') ?>" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-calendar-check me-1"></i>الحجوزات
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><h6 class="dropdown-header"><i class="fas fa-list me-1"></i>إدارة الحجوزات</h6></li>
+                            <li><a class="dropdown-item" href="<?= $base_path ?>bookings/list.php">
+                                <i class="fas fa-list-ul me-2"></i>قائمة الحجوزات
+                            </a></li>
+                            <li><a class="dropdown-item" href="<?= $base_path ?>bookings/add2.php">
+                                <i class="fas fa-plus-circle me-2"></i>حجز جديد
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header"><i class="fas fa-bed me-1"></i>الغرف</h6></li>
+                            <li><a class="dropdown-item" href="<?= $base_path ?>rooms/">
+                                <i class="fas fa-door-open me-2"></i>إدارة الغرف
+                            </a></li>
+                        </ul>
+                    </li>
+
+                    <!-- التقارير -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle <?= is_active('reports') ?>" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-chart-bar me-1"></i>التقارير
                         </a>
                         <ul class="dropdown-menu">
@@ -433,8 +576,10 @@ if ($depth === 0) {
                             </a></li>
                         </ul>
                     </li>
+
+                    <!-- المصروفات -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle <?= is_active('expenses') ?>" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-file-invoice-dollar me-1"></i>المصروفات
                         </a>
                         <ul class="dropdown-menu">
@@ -458,30 +603,24 @@ if ($depth === 0) {
                             <li><a class="dropdown-item" href="<?= $base_path ?>expenses/salary_withdrawals.php">
                                 <i class="fas fa-hand-holding-usd me-2"></i>سحوبات الرواتب
                             </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><h6 class="dropdown-header"><i class="fas fa-chart-bar me-1"></i>تقارير المصروفات</h6></li>
-                            <li><a class="dropdown-item" href="<?= $base_path ?>expenses/monthly_report.php">
-                                <i class="fas fa-calendar-alt me-2"></i>التقرير الشهري
-                            </a></li>
-                            <li><a class="dropdown-item" href="<?= $base_path ?>expenses/yearly_report.php">
-                                <i class="fas fa-calendar me-2"></i>التقرير السنوي
-                            </a></li>
                         </ul>
                     </li>
+
+                    <!-- الموظفين -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-cogs me-1"></i>الإدارة
+                        <a class="nav-link dropdown-toggle <?= is_active('employees') ?>" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-users me-1"></i>الموظفين
                         </a>
                         <ul class="dropdown-menu">
-                            <li><h6 class="dropdown-header"><i class="fas fa-comments me-1"></i>واتساب</h6></li>
-                            <li><a class="dropdown-item" href="<?= $base_path ?>whatsapp_manager.php">
-                                <i class="fab fa-whatsapp me-2"></i>إدارة الواتساب
+                            <li><h6 class="dropdown-header"><i class="fas fa-user-plus me-1"></i>إدارة الموظفين</h6></li>
+                            <li><a class="dropdown-item" href="<?= $base_path ?>employees/">
+                                <i class="fas fa-users-cog me-2"></i>قائمة الموظفين
                             </a></li>
                         </ul>
                     </li>
                 </ul>
 
-                <!-- معلومات المستخدم -->
+                <!-- معلومات المستخدم والإعدادات -->
                 <ul class="navbar-nav">
                     <!-- إشعارات النظام -->
                     <li class="nav-item dropdown">
@@ -494,13 +633,32 @@ if ($depth === 0) {
                             <li id="noNotifications"><span class="dropdown-item">لا توجد إشعارات جديدة</span></li>
                         </ul>
                     </li>
+
+                    <!-- قائمة المستخدم -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-user me-1"></i>المستخدم
+                            <i class="fas fa-user-circle me-1"></i>
+                            <?= isset($_SESSION['username']) ? htmlspecialchars($_SESSION['username']) : 'المستخدم' ?>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="<?= $base_path ?>../logout.php">
-                                <i class="fas fa-sign-out-alt me-1"></i>تسجيل الخروج
+                            <li><h6 class="dropdown-header"><i class="fas fa-cog me-1"></i>الإعدادات</h6></li>
+                            <li><a class="dropdown-item" href="<?= $base_path ?>settings/">
+                                <i class="fas fa-user-cog me-2"></i>إعدادات الحساب
+                            </a></li>
+                            <li><a class="dropdown-item" href="<?= $base_path ?>settings/system.php">
+                                <i class="fas fa-cogs me-2"></i>إعدادات النظام
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header"><i class="fas fa-tools me-1"></i>أدوات النظام</h6></li>
+                            <li><a class="dropdown-item" href="<?= $base_path ?>whatsapp_manager.php">
+                                <i class="fab fa-whatsapp me-2"></i>إدارة الواتساب
+                            </a></li>
+                            <li><a class="dropdown-item" href="<?= $base_path ?>system_tools/">
+                                <i class="fas fa-wrench me-2"></i>أدوات متقدمة
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="<?= $base_path ?>../logout.php">
+                                <i class="fas fa-sign-out-alt me-2"></i>تسجيل الخروج
                             </a></li>
                         </ul>
                     </li>
@@ -511,6 +669,49 @@ if ($depth === 0) {
 
     <!-- حاوية الإشعارات -->
     <div class="notifications-container" id="notificationsContainer"></div>
+
+    <!-- حاوية المحتوى الرئيسي -->
+    <div class="container-fluid mt-4">
+        <!-- CSRF Token للنماذج -->
+        <script>
+            window.csrfToken = '<?= csrf_token() ?>';
+        </script>
+
+        <!-- تأثير شريط التنقل عند التمرير -->
+        <script>
+            window.addEventListener('scroll', function() {
+                const navbar = document.querySelector('.navbar');
+                if (window.scrollY > 50) {
+                    navbar.classList.add('scrolled');
+                } else {
+                    navbar.classList.remove('scrolled');
+                }
+            });
+
+            // تحسين الأداء للقوائم المنسدلة
+            document.addEventListener('DOMContentLoaded', function() {
+                const dropdowns = document.querySelectorAll('.dropdown');
+                dropdowns.forEach(dropdown => {
+                    const dropdownMenu = dropdown.querySelector('.dropdown-menu');
+                    
+                    dropdown.addEventListener('mouseenter', function() {
+                        dropdownMenu.style.display = 'block';
+                        setTimeout(() => {
+                            dropdownMenu.classList.add('show');
+                        }, 10);
+                    });
+                    
+                    dropdown.addEventListener('mouseleave', function() {
+                        dropdownMenu.classList.remove('show');
+                        setTimeout(() => {
+                            if (!dropdownMenu.classList.contains('show')) {
+                                dropdownMenu.style.display = 'none';
+                            }
+                        }, 150);
+                    });
+                });
+            });
+        </script>
 
     <div class="container mt-4">
         <?php if (isset($_SESSION['success'])): ?>
