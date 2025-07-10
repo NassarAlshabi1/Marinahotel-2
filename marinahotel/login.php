@@ -1,13 +1,16 @@
 <?php
+// إعداد إعدادات الجلسة قبل بدءها
+if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.cookie_httponly', 1);
+    ini_set('session.cookie_secure', 0); // تغيير إلى 0 للعمل على HTTP
+    ini_set('session.use_strict_mode', 1);
+    session_start();
+}
+
 require_once 'includes/config.php';
 require_once 'includes/db.php';
+require_once 'includes/session_manager.php';
 require_once 'includes/security.php';
-
-// بدء الجلسة مع إعدادات الأمان
-ini_set('session.cookie_httponly', 1);
-ini_set('session.cookie_secure', 1);
-ini_set('session.use_strict_mode', 1);
-session_start();
 
 // إعادة توجيه المستخدم إذا كان مسجل دخول بالفعل
 if (isset($_SESSION['user_id']) && !empty($_SESSION['user_id'])) {
@@ -31,9 +34,15 @@ $security_setup_needed = false;
 $security_error = '';
 
 try {
-    $security = new SecurityManager($conn);
-    // التحقق من وجود الجداول الأمنية
-    $security->createSecurityTables();
+    // استخدام getInstance بدلاً من إنشاء كائن جديد
+    $security = SecurityManager::getInstance();
+    
+    // التحقق من وجود قاعدة البيانات قبل محاولة إنشاء الجداول
+    if ($conn) {
+        $security->createSecurityTables();
+    } else {
+        throw new Exception("لا يوجد اتصال بقاعدة البيانات");
+    }
 } catch (Exception $e) {
     $security_setup_needed = true;
     $security_error = $e->getMessage();

@@ -40,7 +40,12 @@ try {
     
     // إنشاء ملف log مفصل
     $log_entry = date('Y-m-d H:i:s') . " - معالج: {$result['processed']}, مرسل: {$result['sent']}, غير صالح: {$result['invalid']}, معلق: {$result['pending']}\n";
-    file_put_contents('logs/whatsapp_queue.log', $log_entry, FILE_APPEND | LOCK_EX);
+    // استخدام طريقة آمنة للكتابة بدون exclusive lock
+try {
+    file_put_contents('logs/whatsapp_queue.log', $log_entry, FILE_APPEND);
+} catch (Exception $e) {
+    error_log("WhatsApp queue log write failed: " . $e->getMessage());
+}
     
     echo "تمت المعالجة بنجاح\n";
     

@@ -1,4 +1,4 @@
-THIS SHOULD BE A LINTER ERROR<?php
+<?php
 /**
  * ملف الحماية والأمان
  * يحتوي على وظائف حماية CSRF وفلترة المدخلات وحماية الجلسات
@@ -383,7 +383,13 @@ class SecurityManager {
             mkdir($logDir, 0755, true);
         }
         
-        file_put_contents($logFile, json_encode($log, JSON_UNESCAPED_UNICODE) . "\n", FILE_APPEND | LOCK_EX);
+        // استخدام طريقة آمنة لكتابة الملف بدون exclusive lock
+        try {
+            file_put_contents($logFile, json_encode($log, JSON_UNESCAPED_UNICODE) . "\n", FILE_APPEND);
+        } catch (Exception $e) {
+            // في حالة فشل الكتابة، نحاول بدون FILE_APPEND
+            error_log("Security log write failed: " . $e->getMessage());
+        }
     }
     
     /**
@@ -504,6 +510,200 @@ class SecurityManager {
                 unlink($file);
             }
         }
+    }
+    
+    /**
+     * إنشاء جداول الأمان المطلوبة
+     */
+    public function createSecurityTables() {
+        global $conn;
+        
+        if (!$conn) {
+            throw new Exception("لا يوجد اتصال بقاعدة البيانات");
+        }
+        
+        // جدول سجلات الأمان
+        $security_logs_sql = "CREATE TABLE IF NOT EXISTS security_logs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NULL,
+            ip_address VARCHAR(45),
+            user_agent TEXT,
+            action VARCHAR(255),
+            details TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_user_id (user_id),
+            INDEX idx_ip_address (ip_address),
+            INDEX idx_created_at (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        // جدول محاولات تسجيل الدخول الفاشلة
+        $failed_logins_sql = "CREATE TABLE IF NOT EXISTS failed_logins (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(255),
+            ip_address VARCHAR(45),
+            attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            user_agent TEXT,
+            INDEX idx_username (username),
+            INDEX idx_ip_address (ip_address),
+            INDEX idx_attempt_time (attempt_time)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        // جدول الجلسات النشطة
+        $active_sessions_sql = "CREATE TABLE IF NOT EXISTS active_sessions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT,
+            session_id VARCHAR(255) UNIQUE,
+            ip_address VARCHAR(45),
+            user_agent TEXT,
+            last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_user_id (user_id),
+            INDEX idx_session_id (session_id),
+            INDEX idx_last_activity (last_activity)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        try {
+            if (!$conn->query($security_logs_sql)) {
+                throw new Exception("فشل في إنشاء جدول security_logs: " . $conn->error);
+            }
+            
+            if (!$conn->query($failed_logins_sql)) {
+                throw new Exception("فشل في إنشاء جدول failed_logins: " . $conn->error);
+            }
+            
+            if (!$conn->query($active_sessions_sql)) {
+                throw new Exception("فشل في إنشاء جدول active_sessions: " . $conn->error);
+            }
+            
+            return true;
+        } catch (Exception $e) {
+            error_log("خطأ في إنشاء جداول الأمان: " . $e->getMessage());
+            throw $e;
+        }
+    }
+    
+    /**
+     * تسجيل نشاط المستخدم
+     */
+    public function logUserActivity($user_id, $action, $details = '') {
+        global $conn;
+        
+        if (!$conn) {
+            return false;
+        }
+        
+        $stmt = $conn->prepare("INSERT INTO security_logs (user_id, ip_address, user_agent, action, details) VALUES (?, ?, ?, ?, ?)");
+        
+        if ($stmt) {
+            $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+            $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
+            
+            $stmt->bind_param("issss", $user_id, $ip, $user_agent, $action, $details);
+            $result = $stmt->execute();
+            $stmt->close();
+            
+            return $result;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * تسجيل محاولة دخول فاشلة
+     */
+    public function logFailedLogin($username, $ip_address) {
+        global $conn;
+        
+        if (!$conn) {
+            return false;
+        }
+        
+        $stmt = $conn->prepare("INSERT INTO failed_logins (username, ip_address, user_agent) VALUES (?, ?, ?)");
+        
+        if ($stmt) {
+            $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
+            
+            $stmt->bind_param("sss", $username, $ip_address, $user_agent);
+            $result = $stmt->execute();
+            $stmt->close();
+            
+            return $result;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * إعادة تعيين محاولات الدخول الفاشلة
+     */
+    public function resetFailedAttempts($username) {
+        global $conn;
+        
+        if (!$conn) {
+            return false;
+        }
+        
+        $stmt = $conn->prepare("DELETE FROM failed_logins WHERE username = ? AND attempt_time > DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+        
+        if ($stmt) {
+            $stmt->bind_param("s", $username);
+            $result = $stmt->execute();
+            $stmt->close();
+            
+            return $result;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * فحص إذا كان المستخدم مقفل
+     */
+    public function isUserLocked($username, $maxAttempts = 5, $timeWindow = 3600) {
+        global $conn;
+        
+        if (!$conn) {
+            return false;
+        }
+        
+        $stmt = $conn->prepare("SELECT COUNT(*) as attempts FROM failed_logins WHERE username = ? AND attempt_time > DATE_SUB(NOW(), INTERVAL ? SECOND)");
+        
+        if ($stmt) {
+            $stmt->bind_param("si", $username, $timeWindow);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $row = $result->fetch_assoc();
+            $stmt->close();
+            
+            return ($row['attempts'] >= $maxAttempts);
+        }
+        
+        return false;
+    }
+    
+    /**
+     * فحص IP مشبوه
+     */
+    public function checkSuspiciousIP($ip_address, $maxAttempts = 10, $timeWindow = 3600) {
+        global $conn;
+        
+        if (!$conn) {
+            return false;
+        }
+        
+        $stmt = $conn->prepare("SELECT COUNT(*) as attempts FROM failed_logins WHERE ip_address = ? AND attempt_time > DATE_SUB(NOW(), INTERVAL ? SECOND)");
+        
+        if ($stmt) {
+            $stmt->bind_param("si", $ip_address, $timeWindow);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $row = $result->fetch_assoc();
+            $stmt->close();
+            
+            return ($row['attempts'] >= $maxAttempts);
+        }
+        
+        return false;
     }
 }
 

@@ -17,7 +17,12 @@ require_once 'includes/email_sync.php';
 
 // تسجيل بداية تشغيل المزامنة
 $log_message = "[" . date('Y-m-d H:i:s') . "] بدء تشغيل المزامنة التلقائية\n";
-file_put_contents('logs/sync.log', $log_message, FILE_APPEND | LOCK_EX);
+// استخدام طريقة آمنة للكتابة بدون exclusive lock
+try {
+    file_put_contents('logs/sync.log', $log_message, FILE_APPEND);
+} catch (Exception $e) {
+    error_log("Sync log write failed: " . $e->getMessage());
+}
 
 try {
     // تشغيل المزامنة
@@ -31,11 +36,21 @@ try {
         echo "فشل في المزامنة\n";
     }
     
-    file_put_contents('logs/sync.log', $log_message, FILE_APPEND | LOCK_EX);
+    // استخدام طريقة آمنة للكتابة بدون exclusive lock
+    try {
+        file_put_contents('logs/sync.log', $log_message, FILE_APPEND);
+    } catch (Exception $e) {
+        error_log("Sync log write failed: " . $e->getMessage());
+    }
     
 } catch (Exception $e) {
     $error_message = "[" . date('Y-m-d H:i:s') . "] خطأ في المزامنة: " . $e->getMessage() . "\n";
-    file_put_contents('logs/sync.log', $error_message, FILE_APPEND | LOCK_EX);
+    // استخدام طريقة آمنة للكتابة بدون exclusive lock
+    try {
+        file_put_contents('logs/sync.log', $error_message, FILE_APPEND);
+    } catch (Exception $ex) {
+        error_log("Sync error log write failed: " . $ex->getMessage());
+    }
     echo "خطأ في المزامنة: " . $e->getMessage() . "\n";
 }
 
