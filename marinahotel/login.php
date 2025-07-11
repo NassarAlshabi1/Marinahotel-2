@@ -53,19 +53,25 @@ try {
 }
 
 // دوال مساعدة للأمان
-function safe_sanitize_input($input) {
-    return htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8');
-}
-
-function safe_csrf_token() {
-    if (!isset($_SESSION['csrf_token'])) {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+if (!function_exists('safe_sanitize_input')) {
+    function safe_sanitize_input($input) {
+        return htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8');
     }
-    return $_SESSION['csrf_token'];
 }
 
-function safe_validate_csrf($token) {
-    return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+if (!function_exists('safe_csrf_token')) {
+    function safe_csrf_token() {
+        if (!isset($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+        return $_SESSION['csrf_token'];
+    }
+}
+
+if (!function_exists('safe_validate_csrf')) {
+    function safe_validate_csrf($token) {
+        return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {

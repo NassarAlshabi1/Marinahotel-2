@@ -176,25 +176,29 @@ function check_user_permission($permission_code) {
 }
 
 /**
- * توليد رمز CSRF
+ * توليد رمز CSRF (معرفة في security.php)
  * @return string
  */
-function generate_csrf_token() {
-    if (!isset($_SESSION['csrf_token'])) {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+if (!function_exists('generate_csrf_token')) {
+    function generate_csrf_token() {
+        if (!isset($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+        return $_SESSION['csrf_token'];
     }
-    return $_SESSION['csrf_token'];
 }
 
 /**
- * التحقق من رمز CSRF
+ * التحقق من رمز CSRF (معرفة في security.php)
  * @param string $token الرمز المرسل
  * @return bool
  */
-function validate_csrf_token($token) {
-    return isset($_SESSION['csrf_token']) && 
-           !empty($token) && 
-           hash_equals($_SESSION['csrf_token'], $token);
+if (!function_exists('validate_csrf_token')) {
+    function validate_csrf_token($token) {
+        return isset($_SESSION['csrf_token']) && 
+               !empty($token) && 
+               hash_equals($_SESSION['csrf_token'], $token);
+    }
 }
 
 /**

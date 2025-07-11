@@ -17,9 +17,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
 $current_path = $_SERVER['REQUEST_URI'];
 
 // دالة للتحقق من الرابط النشط
-function is_active($page_name) {
-    global $current_page, $current_path;
-    return (strpos($current_path, $page_name) !== false || $current_page === $page_name) ? 'active' : '';
+if (!function_exists('is_active')) {
+    function is_active($page_name) {
+        global $current_page, $current_path;
+        return (strpos($current_path, $page_name) !== false || $current_page === $page_name) ? 'active' : '';
+    }
 }
 
 // تحديد المسار النسبي للأصول
