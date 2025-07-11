@@ -715,102 +715,121 @@ $security = SecurityManager::getInstance();
 /**
  * إنشاء CSRF token
  */
-function csrf_token() {
-    global $security;
-    return $security->generateCSRFToken();
+if (!function_exists('csrf_token')) {
+    function csrf_token() {
+        global $security;
+        return $security->generateCSRFToken();
+    }
 }
 
 /**
  * التحقق من CSRF token
  */
-function verify_csrf_token($token) {
-    global $security;
-    return $security->validateCSRFToken($token);
+if (!function_exists('verify_csrf_token')) {
+    function verify_csrf_token($token) {
+        global $security;
+        return $security->validateCSRFToken($token);
+    }
 }
 
 /**
  * إنشاء حقل CSRF للنماذج
  */
-function csrf_field() {
-    global $security;
-    return $security->getCSRFField();
+if (!function_exists('csrf_field')) {
+    function csrf_field() {
+        global $security;
+        return $security->getCSRFField();
+    }
 }
 
 /**
  * تنظيف المدخلات
  */
-function clean_input($input, $type = 'string') {
-    global $security;
-    return $security->sanitizeInput($input, $type);
+if (!function_exists('clean_input')) {
+    function clean_input($input, $type = 'string') {
+        global $security;
+        return $security->sanitizeInput($input, $type);
+    }
 }
 
 /**
  * التحقق من الصلاحيات
  */
-function has_permission($permission) {
-    global $security;
-    return $security->checkPermission($permission);
+if (!function_exists('has_permission')) {
+    function has_permission($permission) {
+        global $security;
+        return $security->checkPermission($permission);
+    }
 }
 
 /**
  * تسجيل حدث أمني
  */
-function log_security_event($event, $details = []) {
-    global $security;
-    $security->logSecurityEvent($event, $details);
+if (!function_exists('log_security_event')) {
+    function log_security_event($event, $details = []) {
+        global $security;
+        $security->logSecurityEvent($event, $details);
+    }
 }
 
 /**
  * فحص طلب POST مع حماية CSRF
  */
-function verify_post_request() {
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        http_response_code(405);
-        die('Method Not Allowed');
+if (!function_exists('verify_post_request')) {
+    function verify_post_request() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            die('Method Not Allowed');
+        }
+        
+        if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
+            log_security_event('csrf_validation_failed', [
+                'url' => $_SERVER['REQUEST_URI'],
+                'referer' => $_SERVER['HTTP_REFERER'] ?? ''
+            ]);
+            http_response_code(403);
+            die('CSRF Token Validation Failed');
+        }
+        
+        return true;
     }
-    
-    if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
-        log_security_event('csrf_validation_failed', [
-            'url' => $_SERVER['REQUEST_URI'],
-            'referer' => $_SERVER['HTTP_REFERER'] ?? ''
-        ]);
-        http_response_code(403);
-        die('CSRF Token Validation Failed');
-    }
-    
-    return true;
 }
 
 /**
  * التحقق من تسجيل الدخول
  */
-function require_login() {
-    if (!isset($_SESSION['user_id'])) {
-        global $security;
-        $security->redirectToLogin('يجب تسجيل الدخول أولاً');
+if (!function_exists('require_login')) {
+    function require_login() {
+        if (!isset($_SESSION['user_id'])) {
+            global $security;
+            $security->redirectToLogin('يجب تسجيل الدخول أولاً');
+        }
     }
 }
 
 /**
  * التحقق من صلاحية محددة
  */
-function require_permission($permission) {
-    require_login();
-    
-    if (!has_permission($permission)) {
-        http_response_code(403);
-        log_security_event('permission_denied', [
-            'required_permission' => $permission,
-            'user_id' => $_SESSION['user_id'] ?? null
-        ]);
-        die('ليس لديك صلاحية للوصول إلى هذه الصفحة');
+if (!function_exists('require_permission')) {
+    function require_permission($permission) {
+        require_login();
+        
+        if (!has_permission($permission)) {
+            http_response_code(403);
+            log_security_event('permission_denied', [
+                'required_permission' => $permission,
+                'user_id' => $_SESSION['user_id'] ?? null
+            ]);
+            die('ليس لديك صلاحية للوصول إلى هذه الصفحة');
+        }
     }
 }
 
 /**
  * معالجة رفع الملفات بأمان
  */
-function secure_file_upload($file, $allowedTypes = ['jpg', 'jpeg', 'png', 'pdf'], $maxSize = 5242880) {
+if (!function_exists('secure_file_upload')) {
+    function secure_file_upload($file, $allowedTypes = ['jpg', 'jpeg', 'png', 'pdf'], $maxSize = 5242880) {
     global $security;
     
     if (!isset($file['tmp_name']) || empty($file['tmp_name'])) {
@@ -864,6 +883,7 @@ function secure_file_upload($file, $allowedTypes = ['jpg', 'jpeg', 'png', 'pdf']
     }
     
     return ['success' => false, 'error' => 'فشل في رفع الملف'];
+    }
 }
 
 // تنظيف الجلسات القديمة كل ساعة
