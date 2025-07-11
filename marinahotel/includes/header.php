@@ -1,8 +1,6 @@
 <?php
 // بدء الجلسة وتحميل المكونات الأساسية
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+// الجلسة ستتم إدارتها من خلال security.php و auth.php
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/security.php';
@@ -19,10 +17,10 @@ if (!isset($_SESSION['csrf_token'])) {
 $current_page = basename($_SERVER['PHP_SELF']);
 $current_path = $_SERVER['REQUEST_URI'];
 
-// دالة لإنشاء CSRF token
-function csrf_token() {
-    return $_SESSION['csrf_token'];
-}
+// دالة لإنشاء CSRF token (معرفة في security.php)
+// function csrf_token() {
+//     return $_SESSION['csrf_token'];
+// }
 
 // دالة للتحقق من الرابط النشط
 function is_active($page_name) {
