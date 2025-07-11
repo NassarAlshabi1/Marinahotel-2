@@ -1,8 +1,5 @@
 <?php
-// بدء الجلسة وتحميل المكونات الأساسية
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+// تحميل المكونات الأساسية
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/security.php';
@@ -10,19 +7,9 @@ require_once __DIR__ . '/security.php';
 // تحديد المنطقة الزمنية
 date_default_timezone_set('Asia/Aden');
 
-// إنشاء CSRF token إذا لم يكن موجوداً
-if (!isset($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
-
 // تحديد الصفحة الحالية للرابط النشط
 $current_page = basename($_SERVER['PHP_SELF']);
 $current_path = $_SERVER['REQUEST_URI'];
-
-// دالة لإنشاء CSRF token
-function csrf_token() {
-    return $_SESSION['csrf_token'];
-}
 
 // دالة للتحقق من الرابط النشط
 function is_active($page_name) {
