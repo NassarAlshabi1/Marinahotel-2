@@ -34,7 +34,15 @@ define('UPLOAD_MAX_SIZE', 5 * 1024 * 1024); // 5 ميجابايت
 define('ALLOWED_EXTENSIONS', ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx']);
 
 // إعدادات المسار الأساسي للتطبيق
-define('BASE_URL', 'http://localhost/marina%20hotel/');
+// تحديد المسار الأساسي تلقائياً
+$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$script_name = $_SERVER['SCRIPT_NAME'] ?? '';
+$base_path = dirname(dirname($script_name));
+if ($base_path === '/' || $base_path === '\\') {
+    $base_path = '';
+}
+define('BASE_URL', $protocol . '://' . $host . $base_path . '/');
 
 // مسارات النظام
 define('ROOT_PATH', dirname(__DIR__));

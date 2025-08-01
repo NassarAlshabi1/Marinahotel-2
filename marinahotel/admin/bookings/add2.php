@@ -1,6 +1,8 @@
 <?php
+// تضمين الملفات الأساسية
+require_once '../../includes/header.php';
+require_once '../../includes/auth_check.php';
 include_once '../../includes/db.php';
-include_once '../../includes/auth.php';
 $conn->set_charset("utf8mb4");
 
 // قائمة الجنسيات المحددة
