@@ -1,6 +1,8 @@
 <?php
+// تضمين الملفات الأساسية
+require_once '../../includes/header.php';
+require_once '../../includes/auth_check.php';
 include_once '../../includes/db.php';
-//include_once '../../includes/header.php';
 
 // التحقق من الاتصال بقاعدة البيانات
 if ($conn->connect_error) {
